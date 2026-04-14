@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PFAS Hydration Exposure Calculator</title>
+  <style>
+    /* =========================
+       Base + Design Tokens
+    ========================== */
+    :root {
+      --bg: #f3f6fa;
+      --card: #ffffff;
+      --text: #1f2a37;
+      --muted: #4b5a6a;
+      --primary: #1e5fae;
+      --primary-soft: #e8f1ff;
+      --border: #d5e0ee;
+      --success: #1f7a4c;
+      --warning: #9a6b00;
+      --danger: #9f2d2d;
+      --shadow: 0 8px 24px rgba(20, 41, 75, 0.08);
+      --radius: 14px;
+      --radius-sm: 10px;
+      --transition: all 180ms ease;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #eef4fb 0%, #f8fafd 40%, #f3f6fa 100%);
+      line-height: 1.55;
+    }
+
+    .container {
+      width: min(980px, 92vw);
+      margin: 0 auto;
+      padding: 28px 0 48px;
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 12px;
+      line-height: 1.25;
+    }
+
+    h1 {
+      font-size: clamp(1.7rem, 2.4vw + 1rem, 2.6rem);
+      color: #14345f;
+      letter-spacing: -0.02em;
+    }
+
+    h2 {
+      font-size: clamp(1.25rem, 1.5vw + 1rem, 1.8rem);
+      color: #14345f;
+    }
+
+    p {
+      margin: 0 0 10px;
+      color: var(--muted);
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: clamp(18px, 2.2vw, 30px);
+      margin-bottom: 18px;
+      transition: var(--transition);
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top right, rgba(30, 95, 174, 0.09), transparent 40%);
+      pointer-events: none;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(1rem, 0.9vw + 0.85rem, 1.2rem);
+      color: #2a4a72;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+
+    .disclaimer {
+      background: #fff8e8;
+      border-left: 4px solid #d18a00;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      color: #5f4302;
+      font-weight: 600;
+      margin-top: 16px;
+    }
+
+    /* =========================
+       Form + Inputs
+    ========================== */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-weight: 700;
+      color: #1e3e66;
+      font-size: 0.95rem;
+    }
+
+    .label-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid #98b3d4;
+      color: var(--primary);
+      background: var(--primary-soft);
+      font-size: 0.75rem;
+      cursor: help;
+      position: relative;
+    }
+
+    .info::after {
+      content: attr(data-tip);
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 8px);
+      transform: translateX(-50%);
+      width: 220px;
+      background: #102944;
+      color: #fff;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 0.76rem;
+      line-height: 1.3;
+      opacity: 0;
+      pointer-events: none;
+      transition: var(--transition);
+      z-index: 20;
+    }
+
+    .info:hover::after,
+    .info:focus-visible::after {
+      opacity: 1;
+    }
+
+    input,
+    select {
+      width: 100%;
+      border: 1px solid #b8cbe1;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.97rem;
+      color: #1f2a37;
+      background: #fff;
+      transition: var(--transition);
+    }
+
+    input:focus,
+    select:focus,
+    button:focus-visible {
+      outline: 3px solid rgba(30, 95, 174, 0.25);
+      border-color: var(--primary);
+    }
+
+    .inline-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .inline-group input[type="number"] {
+      flex: 1;
+    }
+
+    .unit-toggle {
+      min-width: 105px;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 11px 16px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 0.96rem;
+      transition: var(--transition);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #164d8e;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #ebf1f8;
+      color: #284b72;
+      border: 1px solid #c4d7ec;
+    }
+
+    .btn-secondary:hover {
+      background: #dfeaf7;
+    }
+
+    /* =========================
+       Results + Guidance
+    ========================== */
+    .hidden {
+      display: none;
+    }
+
+    .result-pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-weight: 700;
+      font-size: 0.88rem;
+      margin-bottom: 10px;
+    }
+
+    .pill-lower {
+      background: #e5f5ec;
+      color: var(--success);
+    }
+
+    .pill-moderate {
+      background: #fff4dc;
+      color: var(--warning);
+    }
+
+    .pill-higher {
+      background: #fde8e8;
+      color: var(--danger);
+    }
+
+    .score {
+      font-size: clamp(1.9rem, 2.4vw + 1rem, 2.8rem);
+      color: #173a68;
+      margin: 6px 0 12px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .muted-note {
+      font-size: 0.93rem;
+      color: #60748a;
+    }
+
+    ul {
+      margin: 10px 0 0 18px;
+      color: var(--muted);
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    footer {
+      text-align: center;
+      color: #60748a;
+      font-size: 0.9rem;
+      margin-top: 10px;
+      padding-bottom: 12px;
+    }
+
+    @media (max-width: 760px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .container {
+        width: min(960px, 94vw);
+        padding-top: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <!-- 1) Hero / Intro -->
+    <section class="card hero">
+      <h1>PFAS Hydration Exposure Calculator</h1>
+      <p class="hero-subtitle">How your water source and daily intake may affect exposure to “forever chemicals”</p>
+      <p><strong>PFAS</strong> are often called “forever chemicals” because many of them do not break down easily in the environment or the body. If PFAS are present in drinking water, higher daily water intake may increase relative exposure.</p>
+      <div class="disclaimer">This is a simplified educational estimate. It does not measure actual PFAS levels or diagnose health risk.</div>
+    </section>
+
+    <!-- 2) Calculator -->
+    <section class="card" aria-labelledby="calc-heading">
+      <h2 id="calc-heading">Estimate Your Relative Exposure</h2>
+      <form id="pfasForm" novalidate>
+        <div class="form-grid">
+          <div class="field">
+            <label for="intake">Daily water intake</label>
+            <div class="inline-group">
+              <input type="number" id="intake" min="0" step="0.1" placeholder="e.g., 2.5" required />
+              <select id="unit" class="unit-toggle" aria-label="Intake unit">
+                <option value="liters">liters</option>
+                <option value="oz">oz</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="label-row">
+              <label for="source">Primary water source / filtration</label>
+              <span class="info" tabindex="0" aria-label="Filtration types info" data-tip="Filtration effectiveness varies by model, maintenance, and PFAS type. NSF-certified systems with PFAS claims generally perform better.">i</span>
+            </div>
+            <select id="source" required>
+              <option value="tap">Unfiltered tap water</option>
+              <option value="pitcher">Pitcher filter</option>
+              <option value="fridge">Refrigerator filter</option>
+              <option value="carbon">Activated carbon filter</option>
+              <option value="ro">Reverse osmosis</option>
+              <option value="bottled">Bottled water</option>
+              <option value="mixed">Mixed / unsure</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="frequency">Frequency of use</label>
+            <select id="frequency" required>
+              <option value="almost">Almost always</option>
+              <option value="most">Most of the time</option>
+              <option value="half">About half</option>
+              <option value="occasional">Occasionally</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="activity">Activity profile</label>
+            <select id="activity" required>
+              <option value="general">General adult</option>
+              <option value="gym">Gym-goer</option>
+              <option value="endurance">Endurance athlete</option>
+              <option value="outdoor">Outdoor worker</option>
+              <option value="high">High fluid intake</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <div class="label-row">
+              <label for="zip">ZIP code (optional)</label>
+              <span class="info" tabindex="0" aria-label="PFAS info" data-tip="PFAS stands for per- and polyfluoroalkyl substances, a class of persistent chemicals used in many products and found in some water systems.">i</span>
+            </div>
+            <input type="text" id="zip" maxlength="10" placeholder="e.g., 02139" inputmode="numeric" />
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button type="submit" class="btn-primary">Estimate My Exposure</button>
+          <button type="button" id="resetBtn" class="btn-secondary">Reset</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 3) Results (hidden until submit) -->
+    <section id="resultsCard" class="card hidden" aria-live="polite">
+      <h2>Your Relative PFAS Exposure Estimate</h2>
+      <div id="riskPill" class="result-pill"></div>
+      <div id="scoreOutput" class="score">--</div>
+      <p id="interpretation"></p>
+      <p id="sourceNote"></p>
+      <p id="zipNote" class="muted-note"></p>
+    </section>
+
+    <!-- 4) Action steps + policy advocacy -->
+    <section id="recommendationsCard" class="card hidden">
+      <h2>Personalized Next Steps</h2>
+      <ul id="personalizedTips"></ul>
+      <h3>Universal Tips</h3>
+      <ul>
+        <li>Check your local water quality report and PFAS testing updates.</li>
+        <li>Look for NSF-certified filters with PFAS reduction claims.</li>
+        <li>Stay informed about state and federal PFAS policy changes.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>What Can You Do Beyond Your Own Home?</h2>
+      <ul>
+        <li>Ask your water utility about PFAS testing frequency and findings.</li>
+        <li>Support stronger drinking water protections and PFAS regulations.</li>
+        <li>Share practical guidance with gyms, running groups, and community organizations.</li>
+        <li>Advocate for safer, equitable public water systems in your area.</li>
+      </ul>
+    </section>
+
+    <!-- 5) Footer -->
+    <footer>
+      Educational tool created for an environmental health risk communication project.
+    </footer>
+  </main>
+
+  <script>
+    // =========================
+    // Constants and Multipliers
+    // =========================
+    const BASELINE_LITERS = 2.7;
+
+    const sourceMultipliers = {
+      tap: 1.0,
+      pitcher: 0.8,
+      fridge: 0.75,
+      carbon: 0.6,
+      ro: 0.2,
+      bottled: 0.5,
+      mixed: 0.85
+    };
+
+    const frequencyMultipliers = {
+      almost: 1.0,
+      most: 0.85,
+      half: 0.65,
+      occasional: 0.4
+    };
+
+    // Activity profile is included for communication context (not weighted in formula).
+    const activityLabels = {
+      general: "general adult",
+      gym: "gym-goer",
+      endurance: "endurance athlete",
+      outdoor: "outdoor worker",
+      high: "high fluid intake"
+    };
+
+    const sourceNotes = {
+      tap: "Unfiltered tap water can contribute higher relative exposure when local contamination is present.",
+      pitcher: "Pitcher filters may reduce some PFAS, but performance can vary by brand, cartridge type, and replacement schedule.",
+      fridge: "Refrigerator filters can provide partial reduction, though PFAS performance varies across models.",
+      carbon: "Activated carbon filters can improve PFAS reduction and are often a meaningful step above basic filtration.",
+      ro: "Reverse osmosis systems are generally among the strongest home options for PFAS reduction.",
+      bottled: "Bottled water quality varies by source and brand, so reviewing available testing information remains important.",
+      mixed: "A mixed or uncertain source can make exposure harder to estimate, so identifying your main source can improve decision-making."
+    };
+
+    const sourceGuidance = {
+      tap: [
+        "Consider adding a PFAS-focused filtration option and compare treatment choices.",
+        "Review your utility's annual water report and recent PFAS updates."
+      ],
+      pitcher: [
+        "Check whether your pitcher model is specifically certified for PFAS reduction.",
+        "Replace filter cartridges on schedule to maintain performance."
+      ],
+      fridge: [
+        "Confirm your refrigerator filter has PFAS-related certification claims.",
+        "Keep up with replacement timing and manufacturer guidance."
+      ],
+      carbon: [
+        "Activated carbon is often a stronger reduction option than basic filters.",
+        "Verify certification details and maintain cartridges consistently."
+      ],
+      ro: [
+        "Reverse osmosis is generally the strongest household option for PFAS reduction.",
+        "Maintain the system regularly so removal performance stays reliable."
+      ],
+      bottled: [
+        "Compare brands for available water quality disclosures.",
+        "Use bottled water as part of a broader strategy that includes local report review."
+      ],
+      mixed: [
+        "Track which source you use most often so future estimates are more precise.",
+        "Clarifying your primary source can guide better filter decisions."
+      ]
+    };
+
+    // =========================
+    // DOM References
+    // =========================
+    const form = document.getElementById("pfasForm");
+    const intakeInput = document.getElementById("intake");
+    const unitSelect = document.getElementById("unit");
+    const sourceSelect = document.getElementById("source");
+    const frequencySelect = document.getElementById("frequency");
+    const activitySelect = document.getElementById("activity");
+    const zipInput = document.getElementById("zip");
+    const resetBtn = document.getElementById("resetBtn");
+
+    const resultsCard = document.getElementById("resultsCard");
+    const recommendationsCard = document.getElementById("recommendationsCard");
+    const riskPill = document.getElementById("riskPill");
+    const scoreOutput = document.getElementById("scoreOutput");
+    const interpretation = document.getElementById("interpretation");
+    const sourceNote = document.getElementById("sourceNote");
+    const zipNote = document.getElementById("zipNote");
+    const personalizedTips = document.getElementById("personalizedTips");
+
+    // =========================
+    // Utility Functions
+    // =========================
+
+    /** Convert user water intake to liters. */
+    function toLiters(value, unit) {
+      const numericValue = Number(value);
+      if (unit === "oz") return numericValue * 0.0295735;
+      return numericValue;
+    }
+
+    /** Determine risk category based on percent score. */
+    function getRiskCategory(percent) {
+      if (percent < 60) {
+        return { label: "Lower relative exposure", className: "pill-lower" };
+      }
+      if (percent <= 110) {
+        return { label: "Moderate relative exposure", className: "pill-moderate" };
+      }
+      return { label: "Higher relative exposure", className: "pill-higher" };
+    }
+
+    /** Create contextual interpretation with calm, educational tone. */
+    function buildInterpretation(percent, riskLabel, activityLabel) {
+      const rounded = Math.round(percent);
+      return `Your estimated relative exposure is about ${rounded}% of the baseline scenario. This falls in the "${riskLabel.toLowerCase()}" range and should be viewed as an educational comparison rather than a direct measurement. Because you identified as a ${activityLabel}, hydration patterns may shift over time, so periodic reassessment can be useful.`;
+    }
+
+    /** Create list items for tailored guidance. */
+    function renderPersonalizedTips(sourceKey) {
+      personalizedTips.innerHTML = "";
+      sourceGuidance[sourceKey].forEach((tip) => {
+        const li = document.createElement("li");
+        li.textContent = tip;
+        personalizedTips.appendChild(li);
+      });
+    }
+
+    // =========================
+    // Form Handlers
+    // =========================
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+
+      // Basic input validation
+      const intakeValue = intakeInput.value.trim();
+      if (!intakeValue || Number(intakeValue) <= 0) {
+        alert("Please enter a valid daily water intake greater than 0.");
+        intakeInput.focus();
+        return;
+      }
+
+      // 1) Convert intake to liters
+      const userLiters = toLiters(intakeValue, unitSelect.value);
+
+      // 2) Read multiplier values
+      const sourceMultiplier = sourceMultipliers[sourceSelect.value];
+      const frequencyMultiplier = frequencyMultipliers[frequencySelect.value];
+
+      // 3) Required calculation logic
+      const intakeFactor = userLiters / BASELINE_LITERS;
+      const relativeExposureScore = intakeFactor * sourceMultiplier * frequencyMultiplier;
+      const percent = relativeExposureScore * 100;
+
+      // 4) Categorize result
+      const category = getRiskCategory(percent);
+
+      // 5) Render result content
+      riskPill.className = `result-pill ${category.className}`;
+      riskPill.textContent = `${category.label} (relative estimate only)`;
+
+      scoreOutput.textContent = `${percent.toFixed(1)}% of baseline`;
+
+      const activityLabel = activityLabels[activitySelect.value];
+      interpretation.textContent = buildInterpretation(percent, category.label, activityLabel);
+      sourceNote.textContent = sourceNotes[sourceSelect.value];
+
+      const zip = zipInput.value.trim();
+      zipNote.textContent = zip
+        ? `Because you entered ZIP code ${zip}, consider checking your local area water utility updates and state PFAS resources for place-specific context.`
+        : "Add a ZIP code next time if you want a reminder to connect this estimate with your local area information.";
+
+      renderPersonalizedTips(sourceSelect.value);
+
+      // Show hidden sections and scroll to results
+      resultsCard.classList.remove("hidden");
+      recommendationsCard.classList.remove("hidden");
+      resultsCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    resetBtn.addEventListener("click", function () {
+      form.reset();
+      resultsCard.classList.add("hidden");
+      recommendationsCard.classList.add("hidden");
+      riskPill.className = "result-pill";
+      scoreOutput.textContent = "--";
+      interpretation.textContent = "";
+      sourceNote.textContent = "";
+      zipNote.textContent = "";
+      personalizedTips.innerHTML = "";
+    });
+  </script>
+</body>
+</html>
